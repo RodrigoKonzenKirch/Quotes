@@ -1,12 +1,10 @@
 package com.example.quotes.quotes_list.ui
 
-import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.quotes.quotes_list.domain.models.Quote
-import com.example.quotes.quotes_list.domain.models.Quotes
+import com.example.quotes.common.Resource
 import com.example.quotes.quotes_list.domain.models.QuotesScreenState
 import com.example.quotes.quotes_list.domain.repository.QuotesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,19 +19,28 @@ class QuotesScreenViewModel @Inject constructor(
     private val _state = mutableStateOf(QuotesScreenState())
     val state: State<QuotesScreenState> = _state
 
-    fun getQuotes() {
-        viewModelScope.launch {
-            var response: Quotes? = null
+    init {
+        getQuotes()
+    }
 
-            try {
-                response = repository.getQuotes()
-            } catch (e: Exception) {
-                Log.i("MyTag", e.toString())
+    private fun getQuotes() {
+        viewModelScope.launch {
+            _state.value = state.value.copy(isLoading = true)
+
+            when(val result = repository.getQuotes()) {
+                is Resource.Success -> {
+                    _state.value = state.value.copy(
+                        myQuotes = result.data?.quotes ?: emptyList(),
+                        isLoading = false
+                    )
+                }
+                is Resource.Error -> {
+                    _state.value = state.value.copy(
+                        error = result.message ?: "An unexpected error occurred",
+                        isLoading = false
+                    )
+                }
             }
-            if (response != null)
-                _state.value = state.value.copy(myQuotes = response.quotes.toList())
-            else
-                _state.value = state.value.copy(myQuotes = listOf(Quote("", 0, "")))
         }
     }
 }
